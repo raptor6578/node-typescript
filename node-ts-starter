@@ -1,0 +1,127 @@
+#!/bin/bash
+
+name=$1
+mkdir ${name}
+cd ${name}
+mkdir src
+mkdir dist
+mkdir views
+mkdir assets
+touch dist/app.js
+
+tee tsconfig.json <<EOF
+{
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true
+  }
+}
+EOF
+
+tee package.json <<EOF
+{
+  "name": "${name}",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "forever start dist/app.js",
+    "stop": "forever stop dist/app.js",
+    "dev": "npm-run-all --parallel dev-watch dev-server",
+    "dev-watch": "tsc --watch",
+    "dev-server": "nodemon dist/app.js"
+  },
+  "author": "dialohome",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "cookie-parser": "^1.4.4",
+    "express": "^4.16.4",
+    "express-session": "^1.15.6",
+    "forever": "^0.15.3",
+    "nodemon": "^1.18.10",
+    "npm-run-all": "^4.1.5",
+    "nunjucks": "^3.1.7",
+    "path": "^0.12.7",
+    "typescript": "^3.3.3333"
+  },
+  "devDependencies": {
+    "@types/body-parser": "^1.17.0",
+    "@types/cookie-parser": "^1.4.1",
+    "@types/express": "^4.16.1",
+    "@types/express-session": "^1.15.12",
+    "@types/node": "^11.11.3",
+    "@types/nunjucks": "^3.1.1"
+  }
+}
+EOF
+
+tee tslint.json <<EOF
+{
+  "defaultSeverity": "error",
+  "extends": [
+      "tslint:recommended"
+  ],
+  "jsRules": {},
+  "rules": {},
+  "rulesDirectory": []
+}
+EOF
+
+tee src/app.ts <<EOF
+import express from "express";
+import nunjucks from "nunjucks";
+import path from "path";
+import bodyParser from "body-parser";
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+
+const app = express();
+
+nunjucks.configure(path.resolve('views'), {
+    autoescape: true,
+    express: app,
+});
+
+const sess: session.SessionOptions = {
+    secret: 'hnghnghjkghjthrt',
+    resave: false,
+    saveUninitialized: true,
+};
+
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(cookieParser());
+app.use(session(sess));
+
+app.use('/assets', express.static(path.resolve('assets')));
+
+app.get('/', (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    res.render('index.html.njk', {message: 'world'});
+});
+
+app.listen(8888);
+EOF
+
+tee views/layout.html.njk <<EOF
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Starter layout</title>
+</head>
+<body>
+{%  block content %}{% endblock %}
+</body>
+</html>
+EOF
+
+tee views/index.html.njk <<EOF
+{% extends 'layout.html.njk' %}
+{% block content %}Hello {{message}}{% endblock %}
+EOF
+
+npm install
